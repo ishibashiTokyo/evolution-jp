@@ -8,64 +8,20 @@
 
 class Document extends ElementBase
 {
-
 	//リソースのステータス一覧
 	const ST_RELEASED = 'released';
-	const ST_DRAFT    = 'draft';
+	const ST_DRAFT		= 'draft';
 
-	//private $id='';                  // Resource ID
-	private $status   = 'released';    // リソースの状態(本番:released、下書き:draft等)
-	private $content  = array();       // Site content
-	private $tv       = array();       // Template Value
-	private $lastLog  = '';            // Last log message
-
-	//content table column (name => default value(null=sql default))
-	private $content_lists
-		= array('id' => null ,
-				'type' => null ,
-				'contentType' => null ,
-				'pagetitle' => '' ,
-				'longtitle' => '' ,
-				'description' => '' ,
-				'alias' => '' ,
-				'link_attributes' => '' ,
-				'published' => null ,
-				'pub_date' => null ,
-				'unpub_date' => null ,
-				'parent' => null ,
-				'isfolder' => null ,
-				'introtext' => null ,
-				'content' => null ,
-				'richtext' => null ,
-				'template' => null ,
-				'menuindex' => 'auto' ,
-				'searchable' => null ,
-				'cacheable' => null ,
-				'createdby' => null ,
-				'createdon' => 'now()' ,
-				'editedby' => null ,
-				'editedon' => 'now()' ,
-				'deleted' => null ,
-				'deletedon' => null ,
-				'deletedby' => null ,
-				'publishedon' => null ,
-				'publishedby' => null ,
-				'menutitle' => '' ,
-				'donthit' => null ,
-				'haskeywords' => null ,
-				'hasmetatags' => null ,
-				'privateweb' => null ,
-				'privatemgr' => null ,
-				'content_dispo' => null ,
-				'hidemenu' => null);
+	private $status	 = 'released'; // リソースの状態(本番:released、下書き:draft等)
+	private $tv	 = array(); // Template Value
 
 	//日付処理が必要なカラム
 	private $content_type_date = array('pub_date','unpub_date','createdon','editedon','deletedon');
-    
+		
 	/*
 	 * __construct
 	 *
-	 * @param $id    リソースID(blank=New resource)
+	 * @param $id		リソースID(blank=New resource)
 	 * @param $level ログレベル
 	 * @return none
 	 *
@@ -73,12 +29,56 @@ class Document extends ElementBase
 	public function __construct($id='',$level=''){
 		parent::__construct('Document Object API','resource',$id,$level);
 
-		if( empty($id) ){
-			$this->content = $this->content_lists;
+		if(empty($id) ){
 			$this->tv = array();
 		}else{
 			$this->load($id);
 		}
+	}
+
+	/*
+	 * ドキュメントのすべてのフィールドに対応した既定の値のセットを取得します。
+	 */
+	protected function getDefaultContent(){
+		return array(
+			'id' => null ,
+			'type' => null ,
+			'contentType' => null ,
+			'pagetitle' => '' ,
+			'longtitle' => '' ,
+			'description' => '' ,
+			'alias' => '' ,
+			'link_attributes' => '' ,
+			'published' => null ,
+			'pub_date' => null ,
+			'unpub_date' => null ,
+			'parent' => null ,
+			'isfolder' => null ,
+			'introtext' => null ,
+			'content' => null ,
+			'richtext' => null ,
+			'template' => null ,
+			'menuindex' => 'auto' ,
+			'searchable' => null ,
+			'cacheable' => null ,
+			'createdby' => null ,
+			'createdon' => 'now()' ,
+			'editedby' => null ,
+			'editedon' => 'now()' ,
+			'deleted' => null ,
+			'deletedon' => null ,
+			'deletedby' => null ,
+			'publishedon' => null ,
+			'publishedby' => null ,
+			'menutitle' => '' ,
+			'donthit' => null ,
+			'haskeywords' => null ,
+			'hasmetatags' => null ,
+			'privateweb' => null ,
+			'privatemgr' => null ,
+			'content_dispo' => null ,
+			'hidemenu' => null
+			);
 	}
 
 	/*
@@ -91,8 +91,9 @@ class Document extends ElementBase
 	 *
 	 */
 	public function get($field='content'){
-		if( !empty($field) && array_key_exists($field,$this->content) ){
-			return $this->content[$field];
+		$value = parent::get($field);
+		if($value !== false){
+			return $value;
 		}
 		$field = $this->getTVName($field);
 		if( $field !== false ){			
@@ -131,17 +132,17 @@ class Document extends ElementBase
 		if( !empty($id) && array_key_exists($id,$this->tv) ){
 			return $this->tv[$id]['value'];
 		}
-		return false;					  
+		return false;						
 	}
 
 	/*
 	 * すべてのTV取得
 	 *
 	 * フォーマットは次のとおり。
-	 *    [TVID]       ... TVID
-	 *       [name]    ... TV名
-	 *       [value]   ... TV値
-	 *       [default] ... TVデフォルト値
+	 *		[TVID]			 ... TVID
+	 *			 [name]		... TV名
+	 *			 [value]	 ... TV値
+	 *			 [default] ... TVデフォルト値
 	 *
 	 * @param none
 	 * @return string/false
@@ -170,37 +171,31 @@ class Document extends ElementBase
 	}
 
 	/*
-	 * リソースの値設定
+	 * リソースの値を設定します。
 	 *
-	 * fieldの先頭に「tv.」をつけるとTVに設定する
-	 *
-	 * @param $field Resource column name
-	 * @param $val   new value
+	 * @param $field 値を更新するフィールドの名前。先頭にプレフィックス「tv.」をつけると値はTVに設定されます。
+	 * @param $val 指定されたフィールドの新しい値。
 	 * @return bool
 	 *
 	 */
 	public function set($field='content',$val=''){
-		if( array_key_exists($field,$this->content_lists) ){
-			$tmp = $this->content['template'];
-			$this->content[$field] = $val;
-			if( $tmp != $this->content['template'] ){
-				return $this->setTemplatebyID($val);
-			}
-			return true;
+		$tv = $this->getTVName($field);
+		if( $tv !== false ){
+			return $this->setTV($tv,$val);
 		}
-		$field = $this->getTVName($field);
-		if( $field !== false ){
-			return $this->setTV($field,$val);
+		else if ($field == 'template') {
+			// setTemplatebyIDメソッドはcontentも更新する
+			return parent::get('template') == $val
+				|| $this->setTemplatebyID($val);
 		}
-		$this->logWarn('Field not exist:'.$field);
-		return true;
+		return parent::set($field,$val);
 	}
 
 	/*
 	 * TV設定
 	 *
 	 * @param $name TV名
-	 * @param $val  値(無指定、もしくはnull指定でデフォルト値に戻す)
+	 * @param $val	値(無指定、もしくはnull指定でデフォルト値に戻す)
 	 * @return bool
 	 *
 	 */
@@ -217,8 +212,8 @@ class Document extends ElementBase
 	/*
 	 * TV設定(idベース)
 	 *
-	 * @param $id   TVID
-	 * @param $val  値(無指定、もしくはnull指定でデフォルト値に戻す)
+	 * @param $id	 TVID
+	 * @param $val	値(無指定、もしくはnull指定でデフォルト値に戻す)
 	 * @return bool
 	 *
 	 */
@@ -239,8 +234,8 @@ class Document extends ElementBase
 	 * すべてのTVを一括設定
 	 *
 	 * フォーマットは次の通り
-	 *    [TVID]       ... TVID
-	 *       [value]   ... TV値
+	 *		[TVID]			 ... TVID
+	 *			 [value]	 ... TV値
 	 *
 	 * ※getAllTVs()のフォーマットに合わせてます
 	 * ※配列にnameやdefaultが含まれていても無視します
@@ -273,7 +268,7 @@ class Document extends ElementBase
 	 *
 	 */
 	public function setTemplate($name){
-		$rs  = parent::$modx->db->select('id','[+prefix+]site_templates',"templatename= '" . parent::$modx->db->escape($name) . "'");
+		$rs	= parent::$modx->db->select('id','[+prefix+]site_templates',"templatename= '" . parent::$modx->db->escape($name) . "'");
 		if( $row = parent::$modx->db->getRow($rs) ){
 			return $this->setTemplatebyID($row['id']);
 		}
@@ -297,57 +292,58 @@ class Document extends ElementBase
 			return false;
 		}
 		if( $tid != 0 ){
-			$rs  = parent::$modx->db->select('id','[+prefix+]site_templates',"id= $tid");
+			$rs = parent::$modx->db->select('id','[+prefix+]site_templates',"id= $tid");
 			if( !($row = parent::$modx->db->getRow($rs)) ){
 				$this->logWarn('無効なテンプレートIDを指定しています。');
 				$tid = 0;
 			}
 		}
-		$this->content['template'] = $tid;
+		parent::set('template', $tid);
 		//tv読み直し
 		$this->tv = array();
-		if( self::documentExist($this->content['id']) ){
+		$docid = $this->getElementId();
+		if( self::documentExist($docid) ){
 			//tv読み込み(値付)
 			$sql = <<< SQL_QUERY
 SELECT tv.id
-      ,tv.name
-      ,IFNULL(tvc.value,tv.default_text) AS value
-      ,tv.default_text
+			,tv.name
+			,IFNULL(tvc.value,tv.default_text) AS value
+			,tv.default_text
 FROM [+prefix+]site_tmplvars AS tv
-  LEFT JOIN [+prefix+]site_tmplvar_templates AS tvt
-    ON tvt.tmplvarid = tv.id
-  LEFT JOIN [+prefix+]site_tmplvar_contentvalues AS tvc
-    ON tvc.tmplvarid = tv.id AND tvc.contentid = {$this->content['id']}
-WHERE tvt.templateid = {$this->content['template']}
+	LEFT JOIN [+prefix+]site_tmplvar_templates AS tvt
+		ON tvt.tmplvarid = tv.id
+	LEFT JOIN [+prefix+]site_tmplvar_contentvalues AS tvc
+		ON tvc.tmplvarid = tv.id AND tvc.contentid = {$docid}
+WHERE tvt.templateid = {$tid}
 
 SQL_QUERY;
 
 			$sql = str_replace('[+prefix+]',parent::$modx->db->config['table_prefix'],$sql);
-			$rs  = parent::$modx->db->query($sql);
+			$rs	= parent::$modx->db->query($sql);
 			while( $row = parent::$modx->db->getRow($rs) ){
-				$this->tv[$row['id']]['name']    = $row['name'];
-				$this->tv[$row['id']]['value']   = $row['value'];
+				$this->tv[$row['id']]['name']		= $row['name'];
+				$this->tv[$row['id']]['value']	 = $row['value'];
 				$this->tv[$row['id']]['default'] = $row['default_text'];
 			}
 		}else{
 			//tv読み込み(値無)
 			$sql = <<< SQL_QUERY
 SELECT tv.id
-	  ,tv.name
-	  ,tv.default_text
+		,tv.name
+		,tv.default_text
 FROM [+prefix+]site_tmplvars AS tv
-  LEFT JOIN [+prefix+]site_tmplvar_templates AS tvt 
-    ON tvt.tmplvarid = tv.id
-  LEFT JOIN [+prefix+]site_templates AS st
+	LEFT JOIN [+prefix+]site_tmplvar_templates AS tvt 
+		ON tvt.tmplvarid = tv.id
+	LEFT JOIN [+prefix+]site_templates AS st
 	ON st.id = tvt.templateid
-WHERE st.id = {$this->content['template']}
+WHERE st.id = {$tid}
 SQL_QUERY;
 
 			$sql = str_replace('[+prefix+]',parent::$modx->db->config['table_prefix'],$sql);
-			$rs  = parent::$modx->db->query($sql);
+			$rs	= parent::$modx->db->query($sql);
 			while( $row = parent::$modx->db->getRow($rs) ){
-				$this->tv[$row['id']]['name']    = $row['name'];
-				$this->tv[$row['id']]['value']   = $row['default_text'];
+				$this->tv[$row['id']]['name']		= $row['name'];
+				$this->tv[$row['id']]['value']	 = $row['default_text'];
 				$this->tv[$row['id']]['default'] = $row['default_text'];
 			}
 		}	
@@ -357,59 +353,35 @@ SQL_QUERY;
 	/*
 	 * リソースの読み込み
 	 *
-	 *  ※draftの読み込み機能は廃止予定
+	 *	※draftの読み込み機能は廃止予定
 	 *
 	 * @param $id リソースID
 	 * @param $status 読み込むリソースのステータス
-	 * @return bool  
+	 * @return bool	
 	 *
 	 */
 	public function load($id,$status=self::ST_RELEASED){
 		//初期化
-		$this->content = $this->content_lists;
+		$this->setContent();
 		$this->tv = array();
 
 		if( !parent::isInt($id,1) ){
 			$this->logerr('リソースIDの指定が不正です。');
 			return false;
 		}else{
-			$rs  = parent::$modx->db->select('*','[+prefix+]site_content','id='.$id);
+			$rs = parent::$modx->db->select('*','[+prefix+]site_content','id='.$id);
 			$row = parent::$modx->db->getRow($rs);
 			if( empty($row) ){
 				$this->logerr('リソースの読み込みに失敗しました。');
 				return false;
 			}
-			$this->content = $row;
-			//tv読み込み
-			$this->setTemplatebyID($this->content['template']);			
+			$this->setContent($row); //site_contentテーブルのフィールドの読み込み
 
 			//下書き等の上書き
 			//※すべてのデータを保持している分けではないので、リリースデータに上書き
 			switch( $status ){
 			case self::ST_DRAFT:
-
-				$rs = parent::$modx->db->select('content','[+prefix+]site_revision',"elmid=$id AND status='draft'");
-				if( $row = parent::$modx->db->getRow($rs) ){
-					$row = unserialize($row['content']);
-					foreach( $row as $k => $v ){
-						if( preg_match('/^tv([0-9]+)(.*)$/',$k,$mt) ){
-
-							if( is_array($v) ){
-								//rivisionテーブルに保存されているデータは一部リソース編集画面のPOSTフォーマットに合わせているのでその調整
-								//チェックボックス
-								$this->tv[$mt[1]]['value'] = implode('||',$v);
-							}else{
-								$this->tv[$mt[1]]['value'] = $v;
-							}
-						}elseif( isset($this->content[$k]) ){
-							$this->content[$k] = $v;
-						}
-					}
-				}else{
-					$this->logWarn('下書きが存在しません。');
-					return false;
-				}
-
+				$this->loadRevision(-1,$status);
 				break;
 			default:
 			}
@@ -434,18 +406,19 @@ SQL_QUERY;
 	 * fieldを指定すれば特定のレコードだけ保存する
 	 * (先頭に「tv.」をつけるとTVが対象)
 	 *
-	 * @param $fields     Save target fields(blank or * = all)
+	 * @param $fields		 Save target fields(blank or * = all)
 	 * @param $clearCache Clear cache
-	 * @return int/bool   save id or false
+	 * @return int/bool	 save id or false
 	 *
 	 */
 	public function save($fields='*',$clearCache=true){
-		$c  = array(); //新規/更新対象content
+		$c = array(); //新規/更新対象content
 		$tv = array(); //新規/更新対象tv
 
+		$content = $this->getContent();
 		if( empty($fields) || $fields == '*' ){
-			foreach( $this->content as $key => $val ){
-				if( !is_null($this->content[$key]) ){
+			foreach( $content as $key => $val ){
+				if( !is_null($val) ){
 					$c[$key] = $val;
 				}
 			}
@@ -453,16 +426,16 @@ SQL_QUERY;
 		}else{
 			if( !is_array($fields) )
 				$fields = explode(',',$fields);
-			foreach( $fields as $val ){
-				if( isset($this->content[$val]) && !is_null($this->content[$val]) ){
-					$c[$val] = $this->content[$val];
+			foreach( $fields as $key ){
+				if( isset($content[$key]) && !is_null($content[$key]) ){
+					$c[$key] = $content[$key];
 				}else{
-					$tmp = $this->getTVName($val);
+					$tmp = $this->getTVName($key);
 					if( $tmp !== false ){
 						$tmp = $this->getTVID($tmp);
 						$tv[$tmp] = $this->tv[$tmp];
 					}else{
-						$this->logWarn('Fields not exist:'.$val);
+						$this->logWarn('Fields not exist:'.$key);
 					}
 
 				}
@@ -470,8 +443,8 @@ SQL_QUERY;
 		}
 
 		//idは途中エラー時はfalseに変化
-		if( parent::isInt($this->content['id'],1) ){
-			$id = $this->content['id'];
+		$id = $this->getElementId();
+		if( parent::isInt($id,1) ){
 			if( !self::documentExist($id) ){
 				$this->logerr('存在しないリソースIDを指定しています:'.$id);
 				return false;
@@ -551,11 +524,11 @@ SQL_QUERY;
 												"tmplvarid = $k AND contentid = $id");
 					}
 				}else{
-					$rs  = parent::$modx->db->select('id','[+prefix+]site_tmplvar_contentvalues',"tmplvarid = $k AND contentid = $id");
+					$rs	= parent::$modx->db->select('id','[+prefix+]site_tmplvar_contentvalues',"tmplvarid = $k AND contentid = $id");
 					if( $row = parent::$modx->db->getRow($rs) ){
 						$rs = parent::$modx->db->update(array( 'value' => parent::$modx->db->escape($v['value']) ),
-													  '[+prefix+]site_tmplvar_contentvalues',
-													  "tmplvarid = $k AND contentid = $id");
+														'[+prefix+]site_tmplvar_contentvalues',
+														"tmplvarid = $k AND contentid = $id");
 						if( !$rs ){
 							$errflag = true;
 						}
@@ -563,8 +536,8 @@ SQL_QUERY;
 						$rs = parent::$modx->db->insert(array( 'tmplvarid' => $k ,
 															 'contentid' => $id ,
 															 'value' => parent::$modx->db->escape($v['value'])
-						                                   ),
-													  '[+prefix+]site_tmplvar_contentvalues');
+																							 ),
+														'[+prefix+]site_tmplvar_contentvalues');
 						if( !$rs ){
 							$errflag = true;
 						}
@@ -578,7 +551,7 @@ SQL_QUERY;
 		
 		if( $id !== false && $clearCache )
 			parent::$modx->clearCache();
-            
+						
 		return $id;
 	}
 
@@ -586,15 +559,15 @@ SQL_QUERY;
 	 * delete resource
 	 *
 	 * @param $clearCache Clear cache
-	 * @return bool   
+	 * @return bool	 
 	 *
 	 */
 	public function delete($clearCache=true){
-		if( !parent::isInt($this->content['id'],1) )
+		if( !parent::isInt($this->getElementId(),1) )
 			return false;
 
-		$this->content['deleted'] = 1;
-		$this->content['deletedon'] = 'now()';
+		$this->set('deleted', 1);
+		$this->set('deletedon', 'now()');
 		//$this->content['deletedby'] = 1;
 		return $this->save('deleted,deletedon',$clearCache);
 	}
@@ -603,28 +576,17 @@ SQL_QUERY;
 	 * undelete resource
 	 *
 	 * @param $clearCache Clear cache
-	 * @return bool   
+	 * @return bool	 
 	 *
 	 */
 	public function undelete($clearCache=true){
-		if( !parent::isInt($this->content['id'],1) )
+		if( !parent::isInt($this->getElementId(),1) )
 			return false;
 
-		$this->content['deleted'] = 0;
-		$this->content['deletedon'] = '';
+		$this->set('deleted', 0);
+		$this->set('deletedon', '');
 		//$this->content['deletedby'] = 1;
 		return $this->save('deleted,deletedon',$clearCache);
-	}
-
-	/*
-	 * lastLog
-	 *
-	 * @param none
-	 * @return string Log message
-	 *
-	 */
-	public function lastLog(){
-		return $this->lastLog;
 	}
 
 	//--- 以下はstaticメソッド
@@ -634,14 +596,14 @@ SQL_QUERY;
 	 * 実際にリソースがあるか確認。
 	 *
 	 * @param $id リソースID
-	 * @return bool  
+	 * @return bool	
 	 *
 	 */
 	public static function documentExist($id){
 		if( !parent::isInt($id,1) ){
 			return false;
 		}
-		$rs  = parent::$modx->db->select('id','[+prefix+]site_content',"id = $id");
+		$rs	= parent::$modx->db->select('id','[+prefix+]site_content',"id = $id");
 		if( $row = parent::$modx->db->getRow($rs) ){
 			return true;
 		}
@@ -666,7 +628,7 @@ SQL_QUERY;
 
 		if( is_null($onPub) ){
 			//値の参照
-			$rs  = parent::$modx->db->select('id,published','[+prefix+]site_content',"id = $id");
+			$rs	= parent::$modx->db->select('id,published','[+prefix+]site_content',"id = $id");
 			if( $row = parent::$modx->db->getRow($rs) ){
 				return $row['published'];
 			}
@@ -718,7 +680,7 @@ SQL_QUERY;
 
 		if( is_null($onDel) ){
 			//値の参照
-			$rs  = parent::$modx->db->select('id,deleted','[+prefix+]site_content',"id = $id");
+			$rs	= parent::$modx->db->select('id,deleted','[+prefix+]site_content',"id = $id");
 			if( $row = parent::$modx->db->getRow($rs) ){
 				return $row['deleted'];
 			}
@@ -737,7 +699,7 @@ SQL_QUERY;
 		}else{
 			$p['deletedby'] = 0;
 			$p['deletedon'] = 0;
-			$rs  = parent::$modx->db->select('id,deletedon','[+prefix+]site_content',"id = $id");
+			$rs	= parent::$modx->db->select('id,deletedon','[+prefix+]site_content',"id = $id");
 			if( $row = parent::$modx->db->getRow($rs) ){
 				$addWhere = "deletedon = {$row['deletedon']}";
 			}
@@ -774,7 +736,7 @@ SQL_QUERY;
 	public static function erase($id,$force=false,$recursive=true,$clearCache=true){
 		if( self::documentExist($id) ){
 			if( !$force ){
-				$rs  = parent::$modx->db->select('id,deleted','[+prefix+]site_content',"id = $id");
+				$rs	= parent::$modx->db->select('id,deleted','[+prefix+]site_content',"id = $id");
 				if( ($row = parent::$modx->db->getRow($rs)) && $row['deleted'] != 1 ){
 					return false;
 				}
@@ -822,25 +784,8 @@ SQL_QUERY;
 		}
 		return false;
 	}
-									  
+										
 	//--- Sub method (This method might be good to be another share class.)
-	/*
-	 * ログインユーザIDを取得
-	 *
-	 * $modx->getLoginUserID()のラッパー
-	 * 管理ユーザ専用とし、falseを返した際に0を返すように変更
-	 *
-	 * @param なし
-	 * @return ユーザ名ID
-	 *
-	 */
-	private static function getLoginMgrUserID(){
-		$u = parent::$modx->getLoginUserID('mgr');
-		if( empty($u) ){
-			return 0;
-		}
-		return $u;
-	}
 
 	/*
 	 * 子リソース一式を取得
