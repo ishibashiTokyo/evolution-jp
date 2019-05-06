@@ -1,11 +1,13 @@
 <?php
 $tvName = '';
-$locked = FALSE;
-$access = FALSE;
+$locked = false;
+$access = false;
 $save   = 0;
 
 // Get save status
-if (isset($_POST['save'])) $save = intval($_POST['save']);
+if (isset($_POST['save'])) {
+    $save = (int)$_POST['save'];
+}
 
 // Get TV name
 $tvName = strip_tags($_GET['tvname']);
@@ -15,33 +17,42 @@ $tv = $this->modx->getTemplateVar($tvName, '*', $docID);
 $field_name = isset($tv['id']) ? $tv['id'] : $tv['name'];
 
 // Handle default TVs
-switch ($tvName)
-{
-	case 'pagetitle'   : $tv['type'] = 'text';     $tv['caption'] = $this->getDefaultTvCaption($tvName); $access = TRUE; break;
-	case 'longtitle'   : $tv['type'] = 'text';     $tv['caption'] = $this->getDefaultTvCaption($tvName); $access = TRUE; break;
-	case 'description' : $tv['type'] = 'textarea'; $tv['caption'] = $this->getDefaultTvCaption($tvName); $access = TRUE; break;
-	case 'content'     : $tv['type'] = getTvType();$tv['caption'] = $this->getDefaultTvCaption($tvName); $access = TRUE; break;
-	case 'menutitle'   : $tv['type'] = 'text';     $tv['caption'] = $this->getDefaultTvCaption($tvName); $access = TRUE; break;
-	case 'introtext'   : $tv['type'] = 'textarea'; $tv['caption'] = $this->getDefaultTvCaption($tvName); $access = TRUE; break;
+if (in_array($tvName, array('pagetitle','longtitle','menutitle','description','introtext','content'))) {
+    $tv['caption'] = $this->getDefaultTvCaption($tvName);
+    $access = true;
+}
+
+if (in_array($tvName, array('pagetitle','longtitle','menutitle'))) {
+    $tv['type'] = 'text';
+} elseif(in_array($tvName, array('description','introtext'))) {
+    $tv['type'] = 'textarea';
+} elseif ($tvName === 'content') {
+    $tv['type'] = getTvType();
 }
 
 // Check TV access
-if (!$access) { $access = $this->checkTvAccess($tv['id']);}
+if (!$access) {
+    $access = $this->checkTvAccess($tv['id']);
+}
 
-if (!$access) return 'Error: Access denied.';
+if (!$access) {
+    return 'Error: Access denied.';
+}
 
 
 
 // User can access TV
 // Show TV form
-if ($save == 0)
-{
+if ($save == 0) {
 	// Check is document locked? Someone else is editing the document...  //$_lang['lock_msg']
-	if ($this->checkLocked()) $locked = TRUE;
-	else                      $this->setLocked(1); // Set document locked
+	if ($this->checkLocked()) {
+        $locked = true;
+    } else {
+        $this->setLocked(1);
+    } // Set document locked
 	
 	// Handle RTE
-	if($tv['type'] == 'richtext')
+	if($tv['type'] === 'richtext')
 	{
 		// Invoke OnRichTextEditorInit event
 		$tmp = array('editor'=>$this->modx->config['which_editor'], 'elements'=>array('tv'.$tvName));
@@ -53,9 +64,8 @@ if ($save == 0)
 	}
 	// Render TV html
 	$tvHtml = $this->modx->renderFormElement($tv['type'], addslashes($field_name), $tv['default_text'], $tv['elements'], $tv['value']);
-}
-else // Save TV
-{
+} else {
+    // Save TV
 	$this->setLocked(0); // Remove document locked
 	
 	// Save TV
@@ -65,8 +75,7 @@ else // Save TV
 // Page output: header
 $theme = $this->modx->config['manager_theme'];
 $output = <<< EOT
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 <title></title>
@@ -76,29 +85,27 @@ $output = <<< EOT
 </head>
 EOT;
 // Page output: TV form
-if ($save == 0)
-{
+if ($save == 0) {
 	$output .= '<body id="qm-tv-body">';
 	
 	// Document is locked message
-	if ($locked)
-	{
+	if ($locked) {
 		$output .= '
 		<h1>'.$_lang['locked'].'</h1>
 		<div id="qm-tv-description">'.$_lang['lock_msg'].'</div>
 		';
-	}
-	else
-	{ // Normal form
+	} else { // Normal form
 		// Image preview
-		if ($tv['type'] == 'image')
-		{
+		if ($tv['type'] === 'image') {
 			$imagePreview = $this->get_img_prev_src();
-			$imagePreview = str_replace('[+site_url+]',$this->modx->config['site_url'],$imagePreview);
-			$imagePreview = str_replace('[+tv_value+]',$tv['value'],$imagePreview);
-			$imagePreview = str_replace('[+tv_name+]',$tvName,$imagePreview);
-		}
-		else $imagePreview = '';
+            $imagePreview = str_replace(
+                array('[+site_url+]', '[+tv_value+]', '[+tv_name+]')
+                , array($this->modx->config['site_url'], $tv['value'], $tvName)
+                , $imagePreview
+            );
+		} else {
+            $imagePreview = '';
+        }
 		$output .= '
 <form id="qm-tv-form" name="mutate" method="post" enctype="multipart/form-data" action="'.$this->modx->config['site_url'].'index.php?id='.$docID.'&amp;quickmanagertv=1&amp;tvname='.$tvName.'">
 <input type="hidden" name="tvid" value="'.$tv['id'].'" />
@@ -128,7 +135,9 @@ if ($save == 0)
 	}
 }
 // Page output: close modal box and refresh parent frame
-else $output .= '<body onload="parent.location.reload();">';
+else {
+    $output .= '<body onload="parent.location.reload();">';
+}
 
 // Page output: footer
 $output .= '
@@ -143,7 +152,9 @@ return $output;
 function getTvType() {
 	global $modx;
 	
-	if($modx->config['use_editor']==0 || $modx->documentObject['richtext']==0)
-		return 'textarea';
-	else return 'richtext';
+	if($modx->config['use_editor']==0 || $modx->documentObject['richtext']==0) {
+        return 'textarea';
+    }
+
+    return 'richtext';
 }
